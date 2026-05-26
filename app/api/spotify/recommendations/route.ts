@@ -21,6 +21,7 @@ export async function GET(request: Request) {
   }
 
   const { searchParams } = new URL(request.url);
+  const debugMode = searchParams.get("debug") === "1";
   const moodParam = searchParams.get("mood") ?? "neutral";
   const mood = allowedMoods.includes(moodParam as MoodKey)
     ? (moodParam as MoodKey)
@@ -43,6 +44,37 @@ export async function GET(request: Request) {
   const headers = {
     Authorization: `Bearer ${session.accessToken}`,
   };
+
+  if (debugMode) {
+    const meResponse = await fetch("https://api.spotify.com/v1/me", {
+      headers,
+      cache: "no-store",
+    });
+    const meText = await meResponse.text().catch(() => "");
+
+    const genresResponse = await fetch(
+      "https://api.spotify.com/v1/recommendations/available-genre-seeds",
+      {
+        headers,
+        cache: "no-store",
+      }
+    );
+    const genresText = await genresResponse.text().catch(() => "");
+
+    return NextResponse.json({
+      me: {
+        status: meResponse.status,
+        statusText: meResponse.statusText,
+        body: meText,
+      },
+      genres: {
+        status: genresResponse.status,
+        statusText: genresResponse.statusText,
+        body: genresText,
+      },
+      recommendationsUrl: `${baseUrl}?${query.toString()}`,
+    });
+  }
 
   let response = await fetch(`${baseUrl}?${query.toString()}`, {
     headers,
