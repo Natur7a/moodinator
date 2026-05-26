@@ -50,9 +50,23 @@ export async function GET(request: Request) {
   );
 
   if (!response.ok) {
-    const data = await response.json().catch(() => ({}));
+    const errorText = await response.text().catch(() => "");
+    let errorMessage = "Spotify request failed";
+
+    try {
+      const data = JSON.parse(errorText);
+      errorMessage = data?.error?.message ?? errorMessage;
+    } catch {
+      // Response was not JSON.
+    }
+
     return NextResponse.json(
-      { error: data?.error?.message ?? "Spotify request failed" },
+      {
+        error: errorMessage,
+        status: response.status,
+        statusText: response.statusText,
+        details: errorText,
+      },
       { status: response.status }
     );
   }
