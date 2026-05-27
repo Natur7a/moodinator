@@ -95,6 +95,7 @@ export default function MoodDashboard() {
   const [correctionError, setCorrectionError] = useState<string | null>(null);
   const [correctionSaving, setCorrectionSaving] = useState(false);
   const [confirmedMood, setConfirmedMood] = useState<MoodKey | null>(null);
+  const [accuracyFeedback, setAccuracyFeedback] = useState<string | null>(null);
 
   const moodKey = useMemo(
     () => mapExpressionToMood(dominantExpression),
@@ -448,13 +449,7 @@ export default function MoodDashboard() {
             onClick={() => {
               setConfirmedMood(null);
               lastRequestedMoodRef.current = null;
-              fetchRecommendations(moodKey).catch((error) => {
-                setPlaylistStatus({
-                  state: "error",
-                  message:
-                    error instanceof Error ? error.message : "Unknown error",
-                });
-              });
+              setAccuracyFeedback("Thank you! We'll keep refining your mood match.");
             }}
           >
             Yes
@@ -465,12 +460,16 @@ export default function MoodDashboard() {
             onClick={() => {
               setCorrectionMood(activeMood);
               setCorrectionError(null);
+              setAccuracyFeedback(null);
               setShowCorrection(true);
             }}
           >
             No
           </button>
         </div>
+        {accuracyFeedback && (
+          <p className="mt-3 text-sm text-emerald-700">{accuracyFeedback}</p>
+        )}
       </section>
 
       {showCorrection && (
