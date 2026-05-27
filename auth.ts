@@ -3,6 +3,7 @@ import SpotifyProvider from "next-auth/providers/spotify";
 
 const spotifyScopes = [
   "user-read-email",
+  "user-read-private",
   "playlist-modify-public",
   "playlist-modify-private",
 ].join(" ");
@@ -63,7 +64,7 @@ export const authOptions: AuthOptions = {
     SpotifyProvider({
       clientId: process.env.SPOTIFY_CLIENT_ID ?? "",
       clientSecret: process.env.SPOTIFY_CLIENT_SECRET ?? "",
-      authorization: { params: { scope: spotifyScopes } },
+      authorization: { params: { scope: spotifyScopes, show_dialog: true } },
     }),
   ],
   callbacks: {
