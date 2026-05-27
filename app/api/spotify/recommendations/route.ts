@@ -44,6 +44,14 @@ export async function GET(request: Request) {
     query.set("target_acousticness", params.target_acousticness.toString());
   }
 
+  if ("min_popularity" in params && params.min_popularity !== undefined) {
+    query.set("min_popularity", params.min_popularity.toString());
+  }
+
+  if ("target_popularity" in params && params.target_popularity !== undefined) {
+    query.set("target_popularity", params.target_popularity.toString());
+  }
+
   const baseUrl = "https://api.spotify.com/v1/recommendations";
   const searchUrl = "https://api.spotify.com/v1/search";
   const headers = {

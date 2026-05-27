@@ -7,6 +7,8 @@ export function getSpotifyRecommendationParams(mood: MoodKey) {
         seed_genres: ["pop", "dance", "electronic"],
         target_valence: 0.85,
         target_energy: 0.8,
+        min_popularity: 65,
+        target_popularity: 85,
       };
     case "sad":
       return {
@@ -14,18 +16,24 @@ export function getSpotifyRecommendationParams(mood: MoodKey) {
         target_valence: 0.25,
         target_energy: 0.3,
         target_acousticness: 0.7,
+        min_popularity: 45,
+        target_popularity: 70,
       };
     case "angry":
       return {
         seed_genres: ["rock", "metal", "hard-rock"],
         target_valence: 0.2,
         target_energy: 0.9,
+        min_popularity: 55,
+        target_popularity: 80,
       };
     case "surprised":
       return {
         seed_genres: ["edm", "pop", "dance"],
         target_valence: 0.65,
         target_energy: 0.75,
+        min_popularity: 60,
+        target_popularity: 82,
       };
     case "neutral":
     default:
@@ -33,6 +41,8 @@ export function getSpotifyRecommendationParams(mood: MoodKey) {
         seed_genres: ["jazz", "classical", "acoustic"],
         target_valence: 0.5,
         target_energy: 0.45,
+        min_popularity: 40,
+        target_popularity: 65,
       };
   }
 }
