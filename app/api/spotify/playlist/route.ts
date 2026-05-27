@@ -179,7 +179,7 @@ export async function POST(request: Request) {
   }
 
   const replaceTracksResponse = await fetch(
-    `https://api.spotify.com/v1/playlists/${playlist.id}/tracks`,
+    `https://api.spotify.com/v1/playlists/${playlist.id}/items`,
     {
       method: "PUT",
       headers: {
