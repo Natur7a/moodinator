@@ -1,8 +1,19 @@
 "use client";
 
-import { signIn } from "next-auth/react";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { signIn, useSession } from "next-auth/react";
 
 export default function LoginCard() {
+  const router = useRouter();
+  const { data: session, status } = useSession();
+
+  useEffect(() => {
+    if (status === "authenticated") {
+      router.replace("/");
+    }
+  }, [router, status]);
+
   return (
     <div className="w-full max-w-lg rounded-[28px] border border-slate-200 bg-white p-8 shadow-[0_20px_60px_-40px_rgba(15,23,42,0.5)]">
       <div className="space-y-2">
@@ -60,7 +71,7 @@ export default function LoginCard() {
       <div className="space-y-3">
         <button
           className="flex w-full items-center justify-center gap-3 rounded-2xl border border-slate-300 bg-white py-3 text-sm font-semibold text-slate-800 transition hover:-translate-y-0.5"
-          onClick={() => signIn("spotify")}
+          onClick={() => signIn("spotify", { callbackUrl: "/" })}
           type="button"
         >
           <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-[#1ed760] text-xs font-bold text-white">

@@ -40,9 +40,25 @@ export async function POST(request: Request) {
   });
 
   if (!profileResponse.ok) {
-    const data = await profileResponse.json().catch(() => ({}));
+    const errorText = await profileResponse.text().catch(() => "");
+    let errorMessage = "Failed to read profile";
+    let errorPayload: unknown = undefined;
+
+    try {
+      errorPayload = JSON.parse(errorText);
+      errorMessage = (errorPayload as any)?.error?.message ?? errorMessage;
+    } catch {
+      // Response was not JSON.
+    }
+
     return NextResponse.json(
-      { error: data?.error?.message ?? "Failed to read profile" },
+      {
+        error: errorMessage,
+        status: profileResponse.status,
+        statusText: profileResponse.statusText,
+        details: errorText,
+        spotifyError: errorPayload,
+      },
       { status: profileResponse.status }
     );
   }
@@ -66,9 +82,25 @@ export async function POST(request: Request) {
   );
 
   if (!playlistResponse.ok) {
-    const data = await playlistResponse.json().catch(() => ({}));
+    const errorText = await playlistResponse.text().catch(() => "");
+    let errorMessage = "Failed to create playlist";
+    let errorPayload: unknown = undefined;
+
+    try {
+      errorPayload = JSON.parse(errorText);
+      errorMessage = (errorPayload as any)?.error?.message ?? errorMessage;
+    } catch {
+      // Response was not JSON.
+    }
+
     return NextResponse.json(
-      { error: data?.error?.message ?? "Failed to create playlist" },
+      {
+        error: errorMessage,
+        status: playlistResponse.status,
+        statusText: playlistResponse.statusText,
+        details: errorText,
+        spotifyError: errorPayload,
+      },
       { status: playlistResponse.status }
     );
   }
@@ -88,9 +120,25 @@ export async function POST(request: Request) {
   );
 
   if (!addTracksResponse.ok) {
-    const data = await addTracksResponse.json().catch(() => ({}));
+    const errorText = await addTracksResponse.text().catch(() => "");
+    let errorMessage = "Failed to add tracks";
+    let errorPayload: unknown = undefined;
+
+    try {
+      errorPayload = JSON.parse(errorText);
+      errorMessage = (errorPayload as any)?.error?.message ?? errorMessage;
+    } catch {
+      // Response was not JSON.
+    }
+
     return NextResponse.json(
-      { error: data?.error?.message ?? "Failed to add tracks" },
+      {
+        error: errorMessage,
+        status: addTracksResponse.status,
+        statusText: addTracksResponse.statusText,
+        details: errorText,
+        spotifyError: errorPayload,
+      },
       { status: addTracksResponse.status }
     );
   }
