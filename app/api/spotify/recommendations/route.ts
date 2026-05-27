@@ -13,8 +13,92 @@ const allowedMoods: MoodKey[] = [
   "neutral",
 ];
 
+type SpotifyTrack = {
+  id: string;
+  name: string;
+  artists: string;
+  uri: string;
+  popularity?: number;
+};
+
+type SpotifySearchResponse = {
+  tracks?: {
+    items?: Array<{
+      id: string;
+      name: string;
+      uri: string;
+      popularity?: number;
+      artists?: Array<{ name: string }>;
+    }>;
+  };
+};
+
+type SpotifyTrackItem = {
+  id: string;
+  name: string;
+  uri: string;
+  popularity?: number;
+  artists?: Array<{ name: string }>;
+};
+
 function buildSearchQuery(mood: MoodKey, seedGenres: string[]) {
   return [mood, ...seedGenres].join(" ");
+}
+
+function buildMoodSearchQueries(
+  mood: MoodKey,
+  params: ReturnType<typeof getSpotifyRecommendationParams>
+): string[] {
+  const terms = params.search_terms ?? [mood];
+  const genreFilters = params.seed_genres.slice(0, 2).map((genre) => `genre:${genre}`);
+  const artistFilters = (params.seed_artists ?? [])
+    .slice(0, 2)
+      .map((artist) => `artist:"${artist}"`);
+
+  const queries: string[] = [];
+  for (const term of terms.slice(0, 3)) {
+    queries.push([term, ...genreFilters].join(" "));
+  }
+
+  if (artistFilters.length > 0) {
+    queries.push([terms[0] ?? mood, ...artistFilters].join(" "));
+  }
+
+  return Array.from(new Set(queries));
+}
+
+function mapTracks(items: SpotifyTrackItem[] = []): SpotifyTrack[] {
+  return items.map((track) => ({
+    id: track.id,
+    name: track.name,
+    artists: track.artists?.map((artist) => artist.name).join(", ") ?? "",
+    uri: track.uri,
+    popularity: track.popularity,
+  }));
+}
+
+async function searchTracks(
+  query: string,
+  headers: Record<string, string>
+): Promise<SpotifyTrack[]> {
+  const searchParams = new URLSearchParams({
+    type: "track",
+    market: "US",
+    limit: "10",
+    q: query,
+  });
+
+  const response = await fetch(
+    `https://api.spotify.com/v1/search?${searchParams.toString()}`,
+    { headers, cache: "no-store" }
+  );
+
+  if (!response.ok) {
+    return [];
+  }
+
+  const data = (await response.json()) as SpotifySearchResponse;
+  return mapTracks(data.tracks?.items ?? []);
 }
 
 export async function GET(request: Request) {
@@ -89,58 +173,96 @@ export async function GET(request: Request) {
     });
   }
 
-  let response = await fetch(`${baseUrl}?${query.toString()}`, {
-    headers,
-    cache: "no-store",
+  const searchQueries = buildMoodSearchQueries(mood, params);
+  const searchResults = await Promise.all(
+    searchQueries.map((queryText) => searchTracks(queryText, headers))
+  );
+  const searchTracksMerged = searchResults.flat();
+
+  const seen = new Set<string>();
+  const dedupedSearch = searchTracksMerged.filter((track) => {
+    if (seen.has(track.id)) return false;
+    seen.add(track.id);
+    return true;
   });
 
-  if (!response.ok) {
-    const searchQuery = new URLSearchParams({
+  dedupedSearch.sort(
+    (a, b) => (b.popularity ?? 0) - (a.popularity ?? 0)
+  );
+
+  let combinedTracks = dedupedSearch;
+
+  if (combinedTracks.length < 8) {
+    const response = await fetch(`${baseUrl}?${query.toString()}`, {
+      headers,
+      cache: "no-store",
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      const sourceTracks = Array.isArray(data?.tracks)
+        ? data.tracks
+        : data?.tracks?.items ?? [];
+      const recommendationTracks =
+        sourceTracks?.map((track: any) => ({
+          id: track.id,
+          name: track.name,
+          artists: track.artists?.map((artist: any) => artist.name).join(", "),
+          uri: track.uri,
+          popularity: track.popularity,
+        })) ?? [];
+
+      for (const track of recommendationTracks) {
+        if (!seen.has(track.id)) {
+          seen.add(track.id);
+          combinedTracks.push(track);
+        }
+      }
+    }
+  }
+
+  if (combinedTracks.length === 0) {
+    const fallbackQuery = new URLSearchParams({
       type: "track",
       market: "US",
       limit: "8",
       q: buildSearchQuery(mood, params.seed_genres),
     });
 
-    response = await fetch(`${searchUrl}?${searchQuery.toString()}`, {
+    const response = await fetch(`${searchUrl}?${fallbackQuery.toString()}`, {
       headers,
       cache: "no-store",
     });
-  }
 
-  if (!response.ok) {
-    const errorText = await response.text().catch(() => "");
-    let errorMessage = "Spotify request failed";
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => "");
+      let errorMessage = "Spotify request failed";
 
-    try {
-      const data = JSON.parse(errorText);
-      errorMessage = data?.error?.message ?? errorMessage;
-    } catch {
-      // Response was not JSON.
+      try {
+        const data = JSON.parse(errorText);
+        errorMessage = data?.error?.message ?? errorMessage;
+      } catch {
+        // Response was not JSON.
+      }
+
+      return NextResponse.json(
+        {
+          error: errorMessage,
+          status: response.status,
+          statusText: response.statusText,
+          details: errorText,
+        },
+        { status: response.status }
+      );
     }
 
-    return NextResponse.json(
-      {
-        error: errorMessage,
-        status: response.status,
-        statusText: response.statusText,
-        details: errorText,
-      },
-      { status: response.status }
-    );
+    const data = await response.json();
+    combinedTracks = mapTracks(data?.tracks?.items ?? []);
   }
 
-  const data = await response.json();
-  const sourceTracks = Array.isArray(data?.tracks)
-    ? data.tracks
-    : data?.tracks?.items ?? [];
-  const tracks =
-    sourceTracks?.map((track: any) => ({
-      id: track.id,
-      name: track.name,
-      artists: track.artists?.map((artist: any) => artist.name).join(", "),
-      uri: track.uri,
-    })) ?? [];
+  const tracks = combinedTracks
+    .slice(0, 8)
+    .map(({ popularity: _popularity, ...track }) => track);
 
   return NextResponse.json({ tracks });
 }
