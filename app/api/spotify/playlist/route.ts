@@ -108,7 +108,7 @@ export async function POST(request: Request) {
   const playlist = await playlistResponse.json();
 
   const addTracksResponse = await fetch(
-    `https://api.spotify.com/v1/playlists/${playlist.id}/tracks`,
+    `https://api.spotify.com/v1/playlists/${playlist.id}/items`,
     {
       method: "POST",
       headers: {
