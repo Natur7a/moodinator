@@ -200,6 +200,8 @@ export default function MoodDashboard() {
   function startAnalyzing() {
     if (!modelsLoaded || !cameraReady || !videoRef.current) return;
     if (intervalRef.current) return;
+    setConfirmedMood(null);
+    lastRequestedMoodRef.current = null;
     setIsAnalyzing(true);
     intervalRef.current = window.setInterval(() => {
       analyzeFrame();
