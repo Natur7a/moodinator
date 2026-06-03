@@ -7,6 +7,9 @@ const spotifyScopes = [
   "playlist-read-private",
   "playlist-modify-public",
   "playlist-modify-private",
+  "streaming",
+  "user-read-playback-state",
+  "user-modify-playback-state",
 ].join(" ");
 
 async function refreshAccessToken(token: {

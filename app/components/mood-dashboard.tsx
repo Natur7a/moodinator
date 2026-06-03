@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import * as faceapi from "face-api.js";
+import { useSpotifyPlayer } from "@/app/context/spotify-player";
 
 type MoodKey = "happy" | "sad" | "angry" | "surprised" | "neutral";
 
@@ -71,6 +72,7 @@ function mapExpressionToMood(expression: string): MoodKey {
 
 export default function MoodDashboard() {
   const { data: session } = useSession();
+  const { state: playerState, playTracks } = useSpotifyPlayer();
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const intervalRef = useRef<number | null>(null);
   const detectingRef = useRef(false);
@@ -321,7 +323,7 @@ export default function MoodDashboard() {
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-6 pb-16">
+    <main className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-6 pb-32">
       <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
         <div className="rounded-[32px] border border-white/80 bg-white/90 p-8 shadow-[0_18px_45px_-30px_rgba(15,23,42,0.6)] backdrop-blur">
           <h2 className="text-2xl font-semibold text-slate-900">
@@ -359,9 +361,17 @@ export default function MoodDashboard() {
         </div>
 
         <div className="rounded-[32px] border border-white/80 bg-white/90 p-8 shadow-[0_18px_45px_-30px_rgba(15,23,42,0.6)] backdrop-blur">
-          <h3 className="text-xl font-semibold text-slate-900">
-            Judul Playlist
-          </h3>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h3 className="text-xl font-semibold text-slate-900">
+              Judul Playlist
+            </h3>
+            {playerState.isReady && (
+              <span className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                Player ready
+              </span>
+            )}
+          </div>
           <div className="mt-6 space-y-3">
             {playlistStatus.state === "loading" ? (
               <div className="rounded-2xl bg-slate-100/90 px-4 py-3 text-sm font-medium text-slate-500">
@@ -374,14 +384,56 @@ export default function MoodDashboard() {
                   : "Login to generate tracks from Spotify."}
               </div>
             ) : null}
-            {tracks.map((track) => (
-              <div
-                key={track.id}
-                className="rounded-2xl bg-slate-100/90 px-4 py-3 text-sm font-medium text-slate-700 shadow-[0_10px_25px_-20px_rgba(15,23,42,0.4)]"
-              >
-                {track.name} - {track.artists}
-              </div>
-            ))}
+            {tracks.map((track, index) => {
+              const isCurrentTrack = playerState.currentTrack?.uri === track.uri;
+              return (
+                <button
+                  key={track.id}
+                  type="button"
+                  disabled={!playerState.isReady}
+                  onClick={() =>
+                    playTracks(
+                      tracks.map((t) => t.uri),
+                      index
+                    )
+                  }
+                  className={`group flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-medium shadow-[0_10px_25px_-20px_rgba(15,23,42,0.4)] transition disabled:cursor-default ${
+                    isCurrentTrack
+                      ? "bg-slate-900 text-white"
+                      : "bg-slate-100/90 text-slate-700 hover:bg-slate-200/80 disabled:opacity-80"
+                  }`}
+                >
+                  {/* Play / equalizer icon */}
+                  <span className="shrink-0">
+                    {isCurrentTrack && playerState.isPlaying ? (
+                      // Animated bars while playing
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="text-emerald-400">
+                        <rect x="2" y="10" width="4" height="10" rx="1" />
+                        <rect x="10" y="4" width="4" height="16" rx="1" />
+                        <rect x="18" y="7" width="4" height="13" rx="1" />
+                      </svg>
+                    ) : (
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                        className={`transition ${
+                          isCurrentTrack
+                            ? "text-slate-300"
+                            : "text-slate-400 group-hover:text-slate-600"
+                        } ${!playerState.isReady ? "opacity-0" : ""}`}
+                      >
+                        <path d="M8 5v14l11-7z" />
+                      </svg>
+                    )}
+                  </span>
+                  <span className="min-w-0 truncate">
+                    {track.name} — {track.artists}
+                  </span>
+                </button>
+              );
+            })}
           </div>
           {playlistStatus.state === "error" && (
             <p className="mt-4 text-sm text-red-600">
